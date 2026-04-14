@@ -1,19 +1,19 @@
 {
-  "name": "1panel-rocket-cli",
+  "name": "1panel-cli",
   "version": "1.0.1",
-  "description": "A CLI tool for deploy static website to 1Panel.",
+  "description": "An AI-friendly CLI for deploying static websites to 1Panel.",
   "keywords": [
     "1Panel",
     "Static Website",
     "Deploy"
   ],
-  "homepage": "https://github.com/ruibaby/1Panel-rocket-cli",
+  "homepage": "https://github.com/kalicyh/1Panel-rocket-cli",
   "bugs": {
-    "url": "https://github.com/ruibaby/1Panel-rocket-cli/issues"
+    "url": "https://github.com/kalicyh/1Panel-rocket-cli/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ruibaby/1Panel-rocket-cli.git"
+    "url": "https://github.com/kalicyh/1Panel-rocket-cli.git"
   },
   "license": "MIT",
   "author": {
@@ -23,16 +23,23 @@
   "type": "module",
   "main": "./bin/index.mjs",
   "bin": {
-    "1p": "./bin/index.mjs",
-    "1panel-rocket": "./bin/index.mjs"
+    "1panel-cli": "./bin/index.mjs"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
-    "bin"
+    "bin",
+    "skills"
   ],
+  "engines": {
+    "node": ">=24 <26"
+  },
   "scripts": {
-    "build": "ncc build src/index.mjs -o bin -m",
+    "build": "ncc build src/index.mjs -o bin",
     "check": "biome check src --fix --unsafe",
-    "prepublish": "pnpm run build"
+    "prepublish": "pnpm run build",
+    "test:smoke": "node ./bin/index.mjs --help"
   },
   "dependencies": {
     "axios": "^1.9.0",

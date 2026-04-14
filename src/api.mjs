@@ -18,7 +18,7 @@ class OnePanelAPI {
    */
   constructor({ baseURL, apiKey, languageCode }) {
     this.apiClient = axios.create({
-      baseURL: `${baseURL}/api/v1`,
+      baseURL: `${baseURL}/api/v2`,
     });
     this.apiClient.interceptors.request.use((config) => {
       const timestamp = Math.floor(Date.now() / 1000).toString();
@@ -34,46 +34,96 @@ class OnePanelAPI {
     this.ignoreFiles = ["node_modules/", ".git/", ".vscode/", ".env", ".env.local"];
   }
 
+  unwrapData(response) {
+    return response?.data?.data ?? response?.data ?? null;
+  }
+
+  normalizeWebsite(website) {
+    if (!website) {
+      return null;
+    }
+
+    const domains = Array.isArray(website.domains)
+      ? website.domains
+          .map((item) => {
+            if (typeof item === "string") {
+              return item;
+            }
+
+            return item?.domain ?? null;
+          })
+          .filter(Boolean)
+      : [];
+
+    const primaryDomain = website.primaryDomain || website.domain || website.alias || domains[0] || null;
+
+    return {
+      ...website,
+      domains,
+      primaryDomain,
+      sitePath: website.sitePath ?? null,
+    };
+  }
+
+  async getWebsiteGroups() {
+    try {
+      const response = await this.apiClient.post("/groups/search", {
+        type: "website",
+      });
+
+      return this.unwrapData(response) ?? [];
+    } catch (error) {
+      throw new Error(`Get website groups failed: ${error.message}`);
+    }
+  }
+
+  async resolveWebsiteGroupId(preferredGroupId) {
+    if (preferredGroupId) {
+      return Number(preferredGroupId);
+    }
+
+    const groups = await this.getWebsiteGroups();
+    const defaultGroup = groups.find((group) => group.isDefault);
+
+    if (defaultGroup?.id) {
+      return defaultGroup.id;
+    }
+
+    if (groups[0]?.id) {
+      return groups[0].id;
+    }
+
+    throw new Error("No website group found. Create a website group in 1Panel first, or pass --group-id.");
+  }
+
   /**
    * Create a new website on the 1Panel server
    * @param {Object} siteConfig - Website configuration
    * @param {string} siteConfig.domain - Primary domain for the website
+   * @param {number|string} [siteConfig.groupId] - Website group ID
+   * @param {string} [siteConfig.alias] - Website alias
    * @returns {Promise<Object>} - Created website details
    */
   async createWebsite(siteConfig) {
     try {
+      const websiteGroupId = await this.resolveWebsiteGroupId(siteConfig.groupId);
       const requestBody = {
-        primaryDomain: siteConfig.domain,
         type: "static",
-        alias: siteConfig.domain,
+        alias: siteConfig.alias || siteConfig.domain,
         remark: "",
-        appType: "installed",
-        webSiteGroupId: 2,
-        otherDomains: "",
         proxy: "",
-        appinstall: {
-          appId: 0,
-          name: "",
-          appDetailId: 0,
-          params: {},
-          version: "",
-          appkey: "",
-          advanced: false,
-          cpuQuota: 0,
-          memoryLimit: 0,
-          memoryUnit: "MB",
-          containerName: "",
-          allowPort: false,
-        },
+        webSiteGroupID: websiteGroupId,
         IPV6: false,
-        enableFtp: false,
+        domains: [
+          {
+            domain: siteConfig.domain,
+            port: 80,
+            ssl: false,
+          },
+        ],
         ftpUser: "",
         ftpPassword: "",
-        proxyType: "tcp",
-        port: 9000,
-        proxyProtocol: "http://",
-        proxyAddress: "",
-        runtimeType: "php",
+        siteDir: "",
       };
 
       await this.apiClient.post("/websites", requestBody);
@@ -91,18 +141,29 @@ class OnePanelAPI {
    */
   async getWebsiteList() {
     try {
-      const { data } = await this.apiClient.post("/websites/search", {
-        name: "",
-        page: 1,
-        pageSize: 999999,
-        orderBy: "created_at",
-        order: "null",
-        websiteGroupId: 0,
-      });
+      const response = await this.apiClient.get("/websites/list");
+      const websites = this.unwrapData(response) ?? [];
 
-      return data.data.items;
+      return websites.map((website) => this.normalizeWebsite(website));
     } catch (error) {
-      throw new Error(`Get website list failed: ${error.message}`);
+      try {
+        const response = await this.apiClient.post("/websites/search", {
+          name: "",
+          page: 1,
+          pageSize: 999999,
+          orderBy: "created_at",
+          order: "null",
+          websiteGroupId: 0,
+          type: "",
+        });
+
+        const data = this.unwrapData(response);
+        const items = data?.items ?? [];
+
+        return items.map((website) => this.normalizeWebsite(website));
+      } catch (fallbackError) {
+        throw new Error(`Get website list failed: ${fallbackError.message}`);
+      }
     }
   }
 
@@ -115,7 +176,17 @@ class OnePanelAPI {
     try {
       const websites = await this.getWebsiteList();
 
-      const website = websites.find((w) => w.primaryDomain === domain);
+      const website = websites.find((w) => {
+        if (w.primaryDomain === domain) {
+          return true;
+        }
+
+        if (Array.isArray(w.domains) && w.domains.includes(domain)) {
+          return true;
+        }
+
+        return false;
+      });
 
       return website;
     } catch (error) {
@@ -141,7 +212,7 @@ class OnePanelAPI {
         headers: formData.getHeaders(),
       });
 
-      return response.data.data || { message: "Upload success" };
+      return this.unwrapData(response) || { message: "Upload success" };
     } catch (error) {
       throw new Error(`Upload file failed: ${filePath} - ${error.message}`);
     }
