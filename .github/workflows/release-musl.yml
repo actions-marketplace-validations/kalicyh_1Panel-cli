@@ -36,10 +36,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build MUSL binary
-        uses: messense/rust-musl-cross@v2
+        uses: houseabsolute/actions-rust-cross@v1
         with:
+          command: build
           target: ${{ matrix.target }}
-          args: --release --manifest-path rust/1panel-cli/Cargo.toml --bin 1panel-cli
+          args: "--release --locked --manifest-path rust/1panel-cli/Cargo.toml --bin 1panel-cli"
 
       - name: Prepare artifact
         run: |
