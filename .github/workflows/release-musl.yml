@@ -35,19 +35,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Add target stdlib
-        run: rustup target add ${{ matrix.target }}
-
-      - name: Install zig and cargo-zigbuild
-        uses: taiki-e/install-action@v2
+      - name: Build MUSL binary
+        uses: houseabsolute/actions-rust-cross@v1
         with:
-          tool: zig,cargo-zigbuild
-
-      - name: Build MUSL binary with zigbuild
-        run: cargo zigbuild --release --locked --manifest-path rust/1panel-cli/Cargo.toml --bin 1panel-cli --target ${{ matrix.target }}
+          command: build
+          target: ${{ matrix.target }}
+          args: "--release --locked --manifest-path rust/1panel-cli/Cargo.toml --bin 1panel-cli"
 
       - name: Prepare artifact
         run: |
