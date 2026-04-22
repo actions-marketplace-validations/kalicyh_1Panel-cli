@@ -18,6 +18,21 @@ This project was originally adapted from [ruibaby/1Panel-rocket-cli](https://git
 - Website discovery via `list-websites`
 - Current 1Panel API v2 compatibility
 
+## Rust Deploy CLI (Image/Compose)
+
+This repository now also includes a standalone Rust deployment CLI for image-based workflows:
+
+- Path: `rust/1panel-cli`
+- Binary name: `1panel-cli`
+- Focus: `image-export`, `image-upload`, `deploy-load`, `deploy-compose-update`, `deploy-all`
+
+Quick start:
+
+```bash
+cd rust/1panel-cli
+cargo run -- --help
+```
+
 ## Installation
 
 ```bash
