@@ -230,20 +230,18 @@ pub async fn read_file(cfg: &OnePanelConfig, path: &str) -> Result<String> {
     Ok(content.to_string())
 }
 
-pub async fn update_compose(cfg: &OnePanelConfig, name: &str, path: &str, content: &str) -> Result<()> {
+pub async fn update_compose(cfg: &OnePanelConfig, _name: &str, path: &str, content: &str) -> Result<()> {
     let client = get_client(cfg);
     let (token, ts) = auth_headers(&cfg.api_key);
-    let url = format!("{}/containers/compose/update", v2_base(cfg));
+    let url = format!("{}/files/save", v2_base(cfg));
 
     let resp = client
         .post(url)
         .header("1Panel-Token", token)
         .header("1Panel-Timestamp", ts)
         .json(&serde_json::json!({
-            "name": name,
             "path": path,
-            "content": content,
-            "env": ""
+            "content": content
         }))
         .send()
         .await?;

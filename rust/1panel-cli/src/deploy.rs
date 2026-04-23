@@ -40,6 +40,44 @@ pub struct ComposeUpdateOpts {
     pub apply: bool,
 }
 
+pub fn resolve_compose_name(compose_name: Option<String>, compose_path: &str) -> Result<String> {
+    if let Some(name) = compose_name {
+        let trimmed = name.trim();
+        if !trimmed.is_empty() {
+            return Ok(trimmed.to_string());
+        }
+    }
+
+    infer_compose_name_from_path(compose_path)
+}
+
+fn infer_compose_name_from_path(compose_path: &str) -> Result<String> {
+    let path = Path::new(compose_path);
+
+    if let Some(parent_name) = path
+        .parent()
+        .and_then(Path::file_name)
+        .and_then(|value| value.to_str())
+    {
+        let trimmed = parent_name.trim();
+        if !trimmed.is_empty() {
+            return Ok(trimmed.to_string());
+        }
+    }
+
+    if let Some(file_stem) = path.file_stem().and_then(|value| value.to_str()) {
+        let trimmed = file_stem.trim();
+        if !trimmed.is_empty() {
+            return Ok(trimmed.to_string());
+        }
+    }
+
+    Err(anyhow!(
+        "unable to infer compose name from --compose-path: {}",
+        compose_path
+    ))
+}
+
 fn ensure_success(status: std::process::ExitStatus, step: &str) -> Result<()> {
     if status.success() {
         Ok(())
@@ -196,4 +234,30 @@ pub async fn deploy_all_and_compose(
 fn temp_tar_path(image_tag: &str) -> PathBuf {
     let safe = image_tag.replace(['/', ':', '@'], "_");
     std::env::temp_dir().join(format!("{}_image.tar", safe))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_compose_name;
+
+    #[test]
+    fn keeps_explicit_compose_name() {
+        let name =
+            resolve_compose_name(Some("wiki".to_string()), "/opt/1panel/docker/compose/wiki/docker-compose.yml")
+                .expect("expected compose name");
+        assert_eq!(name, "wiki");
+    }
+
+    #[test]
+    fn infers_compose_name_from_parent_directory() {
+        let name = resolve_compose_name(None, "/opt/1panel/docker/compose/wiki/docker-compose.yml")
+            .expect("expected compose name");
+        assert_eq!(name, "wiki");
+    }
+
+    #[test]
+    fn infers_compose_name_from_file_stem_when_parent_missing() {
+        let name = resolve_compose_name(None, "docker-compose.yml").expect("expected compose name");
+        assert_eq!(name, "docker-compose");
+    }
 }

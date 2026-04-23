@@ -110,7 +110,7 @@ enum Commands {
         #[command(flatten)]
         auth: ServerAuthArgs,
         #[arg(long)]
-        compose_name: String,
+        compose_name: Option<String>,
         #[arg(long)]
         compose_path: String,
         #[arg(long)]
@@ -148,7 +148,7 @@ enum Commands {
         #[arg(long, default_value_t = false)]
         keep_local_tar: bool,
         #[arg(long)]
-        compose_name: String,
+        compose_name: Option<String>,
         #[arg(long)]
         compose_path: String,
         #[arg(long)]
@@ -530,7 +530,7 @@ async fn run() -> Result<()> {
             let result = deploy::run_compose_update(
                 &cfg_from(&auth)?,
                 ComposeUpdateOpts {
-                    compose_name,
+                    compose_name: deploy::resolve_compose_name(compose_name, &compose_path)?,
                     compose_path,
                     service,
                     from_image,
@@ -593,7 +593,7 @@ async fn run() -> Result<()> {
                 &remote_dir,
                 keep_local_tar,
                 ComposeUpdateOpts {
-                    compose_name,
+                    compose_name: deploy::resolve_compose_name(compose_name, &compose_path)?,
                     compose_path,
                     service,
                     from_image,
