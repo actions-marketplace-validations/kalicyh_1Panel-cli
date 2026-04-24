@@ -192,7 +192,14 @@ struct OkMessage<'a> {
 }
 
 fn config_path() -> Result<PathBuf> {
-    let home = std::env::var("HOME").map_err(|_| anyhow!("HOME is not set"))?;
+    let home = std::env::var("HOME").or_else(|_| {
+        if cfg!(windows) {
+            std::env::var("USERPROFILE")
+        } else {
+            Err(std::env::VarError::NotPresent)
+        }
+    });
+    let home = home.map_err(|_| anyhow!("HOME is not set (Windows also accepts USERPROFILE)"))?;
     Ok(PathBuf::from(home).join(".1panel-cli").join("config.json"))
 }
 
