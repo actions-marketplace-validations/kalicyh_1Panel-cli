@@ -180,14 +180,36 @@ pub async fn upload_file(cfg: &OnePanelConfig, file_path: &Path, remote_dir: &st
         .send()
         .await?;
 
-    let json = check_api_code(resp, "upload_file").await?;
+    let status = resp.status();
+    let body = resp.text().await.unwrap_or_default();
+
+    if !status.is_success() {
+        return Err(anyhow!("upload_file failed: {} - {}", status, body));
+    }
+
+    let dir = remote_dir.trim_end_matches('/');
+    let inferred_path = format!("{}/{}", dir, file_name);
+
+    let json: Value = match serde_json::from_str(&body) {
+        Ok(json) => json,
+        Err(_) => return Ok(inferred_path),
+    };
+
+    if let Some(code) = json.get("code").and_then(|c| c.as_i64()) {
+        if code != 200 {
+            let msg = json
+                .get("message")
+                .and_then(|m| m.as_str())
+                .unwrap_or("Unknown error");
+            return Err(anyhow!("upload_file failed (API {}): {}", code, msg));
+        }
+    }
 
     if let Some(path) = json.get("data").and_then(|d| d.as_str()) {
         return Ok(path.to_string());
     }
 
-    let dir = remote_dir.trim_end_matches('/');
-    Ok(format!("{}/{}", dir, file_name))
+    Ok(inferred_path)
 }
 
 pub async fn load_image(cfg: &OnePanelConfig, remote_path: &str) -> Result<()> {
