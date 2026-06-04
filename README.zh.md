@@ -9,6 +9,7 @@
 ## 功能特点
 
 - 将静态网站部署到 1Panel 服务器
+- 提供基于 Rust CLI 的 GitHub Action
 - 如果网站不存在，自动创建
 - 带有重试机制的文件上传
 - 用于选择现有网站的交互模式
@@ -17,6 +18,8 @@
 - 支持机器可读的 JSON 输出
 - 支持通过 `list-websites` 发现网站
 - 兼容当前 1Panel API v2
+
+GitHub Action 的多场景示例见 [GITHUB_ACTION_DEMOS.md](GITHUB_ACTION_DEMOS.md)。
 
 ## 安装
 
@@ -139,7 +142,7 @@ npx --yes 1panel-cli -p ./dist -d example.com --non-interactive --json
 
 ## GitHub Actions 集成
 
-您可以轻松地将 1Panel CLI 与 GitHub Actions 集成，以自动部署您的静态网站。
+您可以直接使用仓库根目录的 `action.yml`。Action 是 composite 包装层，实际部署逻辑由 Rust 版 `1panel-cli` 执行。
 
 ### 工作流示例
 
@@ -157,31 +160,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
-      
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 10
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-          cache: 'pnpm'
+        uses: actions/checkout@v5
       
       - name: Install dependencies
-        run: pnpm install
+        run: npm ci
       
       - name: Build
-        run: pnpm build
+        run: npm run build
       
       - name: Deploy to 1Panel
-        env:
-          ONEPANEL_BASE_URL: ${{ secrets.ONEPANEL_BASE_URL }}
-          ONEPANEL_API_KEY: ${{ secrets.ONEPANEL_API_KEY }}
-        run: |
-          npx --yes 1panel-cli -p ./dist -d example.com --non-interactive --json
+        uses: kalicyh/1Panel-rocket-cli@v1
+        with:
+          command: deploy
+          base-url: ${{ secrets.ONEPANEL_BASE_URL }}
+          api-key: ${{ secrets.ONEPANEL_API_KEY }}
+          path: ./dist
+          domain: example.com
 ```
 
 ### 配置密钥

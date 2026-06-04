@@ -1,5 +1,5 @@
 use crate::onepanel::{self, OnePanelConfig};
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use serde::Serialize;
 use serde_yaml::Value;
 use std::path::{Path, PathBuf};
@@ -115,7 +115,10 @@ pub async fn load_remote_image(cfg: &OnePanelConfig, remote_path: &str) -> Resul
     onepanel::load_image(cfg, remote_path).await
 }
 
-pub fn update_compose_images(content: &str, opts: &ComposeUpdateOpts) -> Result<(String, Vec<ImageChange>)> {
+pub fn update_compose_images(
+    content: &str,
+    opts: &ComposeUpdateOpts,
+) -> Result<(String, Vec<ImageChange>)> {
     let mut root: Value = serde_yaml::from_str(content)?;
     let mut changes = Vec::new();
 
@@ -143,7 +146,10 @@ pub fn update_compose_images(content: &str, opts: &ComposeUpdateOpts) -> Result<
             }
         }
 
-        let Some(service_obj) = services.get_mut(&service_key).and_then(Value::as_mapping_mut) else {
+        let Some(service_obj) = services
+            .get_mut(&service_key)
+            .and_then(Value::as_mapping_mut)
+        else {
             continue;
         };
 
@@ -179,7 +185,10 @@ pub fn update_compose_images(content: &str, opts: &ComposeUpdateOpts) -> Result<
     Ok((updated, changes))
 }
 
-pub async fn run_compose_update(cfg: &OnePanelConfig, opts: ComposeUpdateOpts) -> Result<ComposeUpdateResult> {
+pub async fn run_compose_update(
+    cfg: &OnePanelConfig,
+    opts: ComposeUpdateOpts,
+) -> Result<ComposeUpdateResult> {
     let current = onepanel::read_file(cfg, &opts.compose_path).await?;
     let (updated, changes) = update_compose_images(&current, &opts)?;
 
@@ -238,7 +247,7 @@ fn temp_tar_path(image_tag: &str) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::{resolve_compose_name, update_compose_images, ComposeUpdateOpts};
+    use super::{ComposeUpdateOpts, resolve_compose_name, update_compose_images};
 
     fn multi_service_compose() -> &'static str {
         r#"
@@ -272,9 +281,11 @@ services:
 
     #[test]
     fn keeps_explicit_compose_name() {
-        let name =
-            resolve_compose_name(Some("wiki".to_string()), "/opt/1panel/docker/compose/wiki/docker-compose.yml")
-                .expect("expected compose name");
+        let name = resolve_compose_name(
+            Some("wiki".to_string()),
+            "/opt/1panel/docker/compose/wiki/docker-compose.yml",
+        )
+        .expect("expected compose name");
         assert_eq!(name, "wiki");
     }
 
@@ -293,11 +304,9 @@ services:
 
     #[test]
     fn updates_all_image_services_when_no_filters_are_provided() {
-        let (_, changes) = update_compose_images(
-            multi_service_compose(),
-            &opts(None, None, "example/new:v2"),
-        )
-        .expect("expected compose update");
+        let (_, changes) =
+            update_compose_images(multi_service_compose(), &opts(None, None, "example/new:v2"))
+                .expect("expected compose update");
         assert_eq!(changes.len(), 2);
         assert_eq!(changes[0].service, "app");
         assert_eq!(changes[1].service, "worker");

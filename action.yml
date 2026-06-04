@@ -1,0 +1,217 @@
+name: "1Panel Rust CLI"
+description: "Deploy static sites and Docker compose updates to 1Panel using the Rust 1panel-cli binary."
+author: "Ryan Wang"
+
+branding:
+  icon: "upload-cloud"
+  color: "blue"
+
+inputs:
+  command:
+    description: "Rust CLI command to run: deploy, server-test, list-websites, list-composes, deploy-compose-update, deploy-all, deploy-all-compose, image-export, image-upload, deploy-load, or help."
+    required: false
+    default: "deploy"
+  help-command:
+    description: "Subcommand to show help for when command is help."
+    required: false
+    default: ""
+  version:
+    description: "Release tag to download. Leave empty to use the action ref when it is a v* tag, otherwise the latest release."
+    required: false
+    default: ""
+  repository:
+    description: "Repository that publishes the Rust release assets."
+    required: false
+    default: ""
+  target:
+    description: "Release target asset suffix. Leave empty for automatic Linux x64/arm64 detection."
+    required: false
+    default: ""
+  binary-url:
+    description: "Direct URL to a 1panel-cli binary. Overrides repository/version/target download."
+    required: false
+    default: ""
+  binary-path:
+    description: "Existing local path to a 1panel-cli binary. Useful for local action tests."
+    required: false
+    default: ""
+  github-token:
+    description: "Optional token for downloading release assets from private repositories or avoiding rate limits."
+    required: false
+    default: ""
+  verify-checksum:
+    description: "Verify downloaded release assets against SHA256SUMS when available."
+    required: false
+    default: "true"
+
+  base-url:
+    description: "1Panel base URL, for example https://panel.example.com."
+    required: false
+    default: ""
+  api-key:
+    description: "1Panel API key."
+    required: false
+    default: ""
+  host:
+    description: "1Panel host. Prefer base-url unless host/port are needed separately."
+    required: false
+    default: ""
+  port:
+    description: "1Panel port."
+    required: false
+    default: ""
+  insecure:
+    description: "Skip TLS certificate verification."
+    required: false
+    default: "false"
+  json:
+    description: "Pass --json and expose stdout as the result-json output."
+    required: false
+    default: "true"
+  non-interactive:
+    description: "Pass --non-interactive for static deploy."
+    required: false
+    default: "true"
+
+  path:
+    description: "Static build directory for the deploy command."
+    required: false
+    default: ""
+  domain:
+    description: "Website domain for static deploy."
+    required: false
+    default: ""
+  group-id:
+    description: "Website group ID for automatic static website creation."
+    required: false
+    default: ""
+  alias:
+    description: "Website alias when creating a missing static website."
+    required: false
+    default: ""
+  create-if-missing:
+    description: "Create the static website when it does not exist."
+    required: false
+    default: "false"
+  yes:
+    description: "Pass --yes for static deploy."
+    required: false
+    default: "false"
+
+  info:
+    description: "Optional list-composes info filter."
+    required: false
+    default: ""
+  image-tag:
+    description: "Docker image tag for image-export, deploy-all, and deploy-all-compose."
+    required: false
+    default: ""
+  output:
+    description: "Local tar output path for image-export."
+    required: false
+    default: ""
+  input:
+    description: "Local tar input path for image-upload."
+    required: false
+    default: ""
+  remote-dir:
+    description: "Remote 1Panel temp directory for image uploads."
+    required: false
+    default: ""
+  remote-path:
+    description: "Remote image tar path for deploy-load."
+    required: false
+    default: ""
+  keep-local-tar:
+    description: "Keep the temporary local image tar after deploy-all or deploy-all-compose."
+    required: false
+    default: "false"
+  compose-name:
+    description: "1Panel compose name. If empty, the Rust CLI infers it from compose-path."
+    required: false
+    default: ""
+  compose-path:
+    description: "Remote docker-compose.yml path on 1Panel."
+    required: false
+    default: ""
+  to-image:
+    description: "Target image for compose updates. For deploy-all-compose, empty defaults to image-tag."
+    required: false
+    default: ""
+  service:
+    description: "Optional compose service name to update."
+    required: false
+    default: ""
+  from-image:
+    description: "Optional current image filter for compose updates."
+    required: false
+    default: ""
+  dry-run:
+    description: "Preview compose image changes without writing them."
+    required: false
+    default: "false"
+  apply:
+    description: "Apply compose up. Empty uses the Rust CLI default for the selected command."
+    required: false
+    default: ""
+
+outputs:
+  binary-path:
+    description: "Installed Rust CLI binary path."
+    value: ${{ steps.install.outputs.binary-path }}
+  result-json:
+    description: "Raw stdout from the Rust CLI when json is enabled."
+    value: ${{ steps.run.outputs.result-json }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Rust 1Panel CLI
+      id: install
+      shell: bash
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_REPOSITORY: ${{ inputs.repository }}
+        INPUT_ACTION_REPOSITORY: ${{ github.action_repository }}
+        INPUT_ACTION_REF: ${{ github.action_ref }}
+        INPUT_TARGET: ${{ inputs.target }}
+        INPUT_BINARY_URL: ${{ inputs.binary-url }}
+        INPUT_BINARY_PATH: ${{ inputs.binary-path }}
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+        INPUT_VERIFY_CHECKSUM: ${{ inputs.verify-checksum }}
+      run: "$GITHUB_ACTION_PATH/action/install.sh"
+
+    - name: Run Rust 1Panel CLI
+      id: run
+      shell: bash
+      env:
+        INPUT_COMMAND: ${{ inputs.command }}
+        INPUT_HELP_COMMAND: ${{ inputs.help-command }}
+        INPUT_BASE_URL: ${{ inputs.base-url }}
+        INPUT_API_KEY: ${{ inputs.api-key }}
+        INPUT_HOST: ${{ inputs.host }}
+        INPUT_PORT: ${{ inputs.port }}
+        INPUT_INSECURE: ${{ inputs.insecure }}
+        INPUT_JSON: ${{ inputs.json }}
+        INPUT_NON_INTERACTIVE: ${{ inputs.non-interactive }}
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_DOMAIN: ${{ inputs.domain }}
+        INPUT_GROUP_ID: ${{ inputs.group-id }}
+        INPUT_ALIAS: ${{ inputs.alias }}
+        INPUT_CREATE_IF_MISSING: ${{ inputs.create-if-missing }}
+        INPUT_YES: ${{ inputs.yes }}
+        INPUT_INFO: ${{ inputs.info }}
+        INPUT_IMAGE_TAG: ${{ inputs.image-tag }}
+        INPUT_OUTPUT: ${{ inputs.output }}
+        INPUT_INPUT: ${{ inputs.input }}
+        INPUT_REMOTE_DIR: ${{ inputs.remote-dir }}
+        INPUT_REMOTE_PATH: ${{ inputs.remote-path }}
+        INPUT_KEEP_LOCAL_TAR: ${{ inputs.keep-local-tar }}
+        INPUT_COMPOSE_NAME: ${{ inputs.compose-name }}
+        INPUT_COMPOSE_PATH: ${{ inputs.compose-path }}
+        INPUT_TO_IMAGE: ${{ inputs.to-image }}
+        INPUT_SERVICE: ${{ inputs.service }}
+        INPUT_FROM_IMAGE: ${{ inputs.from-image }}
+        INPUT_DRY_RUN: ${{ inputs.dry-run }}
+        INPUT_APPLY: ${{ inputs.apply }}
+      run: "$GITHUB_ACTION_PATH/action/run.sh"

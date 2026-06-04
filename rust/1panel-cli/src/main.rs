@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use clap::{Parser, Subcommand};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
@@ -12,7 +12,11 @@ use deploy::{ComposeUpdateOpts, ComposeUpdateResult};
 use onepanel::OnePanelConfig;
 
 #[derive(Parser, Debug)]
-#[command(name = "1panel-cli", about = "Standalone 1Panel deployment CLI")]
+#[command(
+    name = "1panel-cli",
+    version,
+    about = "Standalone 1Panel deployment CLI"
+)]
 struct Cli {
     #[arg(long, global = true, default_value_t = false)]
     json: bool,
@@ -157,7 +161,7 @@ enum Commands {
         service: Option<String>,
         #[arg(long)]
         from_image: Option<String>,
-        #[arg(long, default_value_t = true)]
+        #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
         apply: bool,
     },
 }
@@ -244,7 +248,9 @@ fn parse_base_url(base_url: &str) -> Result<(String, u16, String)> {
 fn cfg_from(auth: &ServerAuthArgs) -> Result<OnePanelConfig> {
     let local = read_local_config()?;
     let env_host = std::env::var("ONEPANEL_HOST").ok();
-    let env_port = std::env::var("ONEPANEL_PORT").ok().and_then(|v| v.parse::<u16>().ok());
+    let env_port = std::env::var("ONEPANEL_PORT")
+        .ok()
+        .and_then(|v| v.parse::<u16>().ok());
     let env_api_key = std::env::var("ONEPANEL_API_KEY").ok();
     let env_base_url = std::env::var("ONEPANEL_BASE_URL").ok();
     let env_insecure = std::env::var("ONEPANEL_INSECURE")
@@ -271,7 +277,11 @@ fn cfg_from(auth: &ServerAuthArgs) -> Result<OnePanelConfig> {
         .or(env_host)
         .or(local.host)
         .or_else(|| parsed_base.as_ref().map(|(h, _, _)| h.clone()))
-        .ok_or_else(|| anyhow!("host is required (use --host, --base-url, ONEPANEL_HOST, or ONEPANEL_BASE_URL)"))?;
+        .ok_or_else(|| {
+            anyhow!(
+                "host is required (use --host, --base-url, ONEPANEL_HOST, or ONEPANEL_BASE_URL)"
+            )
+        })?;
 
     let port = auth
         .port
@@ -402,10 +412,28 @@ async fn run() -> Result<()> {
                         "config": cfg
                     }));
                 } else {
-                    println!("base_url: {}", cfg.base_url.unwrap_or_else(|| "<unset>".to_string()));
-                    println!("api_key: {}", if cfg.api_key.is_some() { "<set>" } else { "<unset>" });
-                    println!("host: {}", cfg.host.unwrap_or_else(|| "<unset>".to_string()));
-                    println!("port: {}", cfg.port.map(|v| v.to_string()).unwrap_or_else(|| "<unset>".to_string()));
+                    println!(
+                        "base_url: {}",
+                        cfg.base_url.unwrap_or_else(|| "<unset>".to_string())
+                    );
+                    println!(
+                        "api_key: {}",
+                        if cfg.api_key.is_some() {
+                            "<set>"
+                        } else {
+                            "<unset>"
+                        }
+                    );
+                    println!(
+                        "host: {}",
+                        cfg.host.unwrap_or_else(|| "<unset>".to_string())
+                    );
+                    println!(
+                        "port: {}",
+                        cfg.port
+                            .map(|v| v.to_string())
+                            .unwrap_or_else(|| "<unset>".to_string())
+                    );
                     println!(
                         "insecure: {}",
                         cfg.insecure
@@ -423,10 +451,28 @@ async fn run() -> Result<()> {
             alias,
             create_if_missing,
             yes,
-            non_interactive: _,
+            non_interactive,
         } => {
+            if domain.is_none() && non_interactive {
+                return Err(anyhow!("domain is required in non-interactive mode"));
+            }
+
+            let group_id = group_id.or_else(|| {
+                std::env::var("ONEPANEL_WEBSITE_GROUP_ID")
+                    .ok()
+                    .and_then(|value| value.parse::<u64>().ok())
+            });
+
             let cfg = cfg_from(&auth)?;
-            let result = static_site::deploy_static(&cfg, &path, domain, create_if_missing || yes, alias.as_deref(), group_id).await?;
+            let result = static_site::deploy_static(
+                &cfg,
+                &path,
+                domain,
+                create_if_missing || yes,
+                alias.as_deref(),
+                group_id,
+            )
+            .await?;
 
             if cli.json {
                 print_json(&result);
@@ -555,7 +601,8 @@ async fn run() -> Result<()> {
             keep_local_tar,
         } => {
             let (export, upload) =
-                deploy::deploy_all(&cfg_from(&auth)?, &image_tag, &remote_dir, keep_local_tar).await?;
+                deploy::deploy_all(&cfg_from(&auth)?, &image_tag, &remote_dir, keep_local_tar)
+                    .await?;
 
             if cli.json {
                 print_json(&serde_json::json!({

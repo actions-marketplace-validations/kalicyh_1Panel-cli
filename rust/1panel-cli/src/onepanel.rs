@@ -1,6 +1,6 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use chrono::Utc;
-use reqwest::{multipart, Client};
+use reqwest::{Client, multipart};
 use serde::Serialize;
 use serde_json::Value;
 use std::path::Path;
@@ -154,8 +154,14 @@ async fn list_composes_v2(cfg: &OnePanelConfig, info: Option<&str>) -> Result<Ve
 
     let mut out = Vec::new();
     for item in items {
-        let name = item.get("name").and_then(|x| x.as_str()).unwrap_or_default();
-        let path = item.get("path").and_then(|x| x.as_str()).unwrap_or_default();
+        let name = item
+            .get("name")
+            .and_then(|x| x.as_str())
+            .unwrap_or_default();
+        let path = item
+            .get("path")
+            .and_then(|x| x.as_str())
+            .unwrap_or_default();
         if name.is_empty() || path.is_empty() {
             continue;
         }
@@ -196,8 +202,14 @@ async fn list_composes_v1(cfg: &OnePanelConfig, info: Option<&str>) -> Result<Ve
 
     let mut out = Vec::new();
     for item in items {
-        let name = item.get("name").and_then(|x| x.as_str()).unwrap_or_default();
-        let path = item.get("path").and_then(|x| x.as_str()).unwrap_or_default();
+        let name = item
+            .get("name")
+            .and_then(|x| x.as_str())
+            .unwrap_or_default();
+        let path = item
+            .get("path")
+            .and_then(|x| x.as_str())
+            .unwrap_or_default();
         if name.is_empty() || path.is_empty() {
             continue;
         }
@@ -251,14 +263,22 @@ async fn test_connection_v1(cfg: &OnePanelConfig) -> Result<()> {
     Ok(())
 }
 
-pub async fn upload_file(cfg: &OnePanelConfig, file_path: &Path, remote_dir: &str) -> Result<String> {
+pub async fn upload_file(
+    cfg: &OnePanelConfig,
+    file_path: &Path,
+    remote_dir: &str,
+) -> Result<String> {
     match upload_file_v2(cfg, file_path, remote_dir).await {
         Ok(v) => Ok(v),
         Err(_) => upload_file_v1(cfg, file_path, remote_dir).await,
     }
 }
 
-async fn upload_file_v2(cfg: &OnePanelConfig, file_path: &Path, remote_dir: &str) -> Result<String> {
+async fn upload_file_v2(
+    cfg: &OnePanelConfig,
+    file_path: &Path,
+    remote_dir: &str,
+) -> Result<String> {
     let client = get_client(cfg);
     let (token, ts) = auth_headers(&cfg.api_key);
     let url = format!("{}/files/upload", v2_base(cfg));
@@ -317,7 +337,11 @@ async fn upload_file_v2(cfg: &OnePanelConfig, file_path: &Path, remote_dir: &str
     Ok(inferred_path)
 }
 
-async fn upload_file_v1(cfg: &OnePanelConfig, file_path: &Path, remote_dir: &str) -> Result<String> {
+async fn upload_file_v1(
+    cfg: &OnePanelConfig,
+    file_path: &Path,
+    remote_dir: &str,
+) -> Result<String> {
     let client = get_client(cfg);
     let (token, ts) = auth_headers(&cfg.api_key);
     let url = format!("{}/files/upload", v1_base(cfg));
@@ -512,7 +536,12 @@ async fn read_file_v1(cfg: &OnePanelConfig, path: &str) -> Result<String> {
     Ok(content.to_string())
 }
 
-pub async fn update_compose(cfg: &OnePanelConfig, _name: &str, path: &str, content: &str) -> Result<()> {
+pub async fn update_compose(
+    cfg: &OnePanelConfig,
+    _name: &str,
+    path: &str,
+    content: &str,
+) -> Result<()> {
     match update_compose_v2(cfg, path, content).await {
         Ok(()) => Ok(()),
         Err(_) => update_compose_v1(cfg, _name, path, content).await,
@@ -539,7 +568,12 @@ async fn update_compose_v2(cfg: &OnePanelConfig, path: &str, content: &str) -> R
     Ok(())
 }
 
-async fn update_compose_v1(cfg: &OnePanelConfig, name: &str, path: &str, content: &str) -> Result<()> {
+async fn update_compose_v1(
+    cfg: &OnePanelConfig,
+    name: &str,
+    path: &str,
+    content: &str,
+) -> Result<()> {
     let client = get_client(cfg);
     let (token, ts) = auth_headers(&cfg.api_key);
     let url = format!("{}/containers/compose/update", v1_base(cfg));
@@ -567,8 +601,8 @@ mod tests {
 
     #[test]
     fn parses_plain_json_body() {
-        let json = parse_json_body(r#"{"code":200,"data":{"ok":true}}"#, "test")
-            .expect("expected json");
+        let json =
+            parse_json_body(r#"{"code":200,"data":{"ok":true}}"#, "test").expect("expected json");
         assert_eq!(json["code"].as_i64(), Some(200));
     }
 
@@ -580,14 +614,24 @@ mod tests {
     }
 }
 
-pub async fn operate_compose(cfg: &OnePanelConfig, name: &str, path: &str, operation: &str) -> Result<()> {
+pub async fn operate_compose(
+    cfg: &OnePanelConfig,
+    name: &str,
+    path: &str,
+    operation: &str,
+) -> Result<()> {
     match operate_compose_v2(cfg, name, path, operation).await {
         Ok(()) => Ok(()),
         Err(_) => operate_compose_v1(cfg, name, path, operation).await,
     }
 }
 
-async fn operate_compose_v2(cfg: &OnePanelConfig, name: &str, path: &str, operation: &str) -> Result<()> {
+async fn operate_compose_v2(
+    cfg: &OnePanelConfig,
+    name: &str,
+    path: &str,
+    operation: &str,
+) -> Result<()> {
     let client = get_client(cfg);
     let (token, ts) = auth_headers(&cfg.api_key);
     let url = format!("{}/containers/compose/operate", v2_base(cfg));
@@ -609,7 +653,12 @@ async fn operate_compose_v2(cfg: &OnePanelConfig, name: &str, path: &str, operat
     Ok(())
 }
 
-async fn operate_compose_v1(cfg: &OnePanelConfig, name: &str, path: &str, operation: &str) -> Result<()> {
+async fn operate_compose_v1(
+    cfg: &OnePanelConfig,
+    name: &str,
+    path: &str,
+    operation: &str,
+) -> Result<()> {
     let client = get_client(cfg);
     let (token, ts) = auth_headers(&cfg.api_key);
     let url = format!("{}/containers/compose/operate", v1_base(cfg));

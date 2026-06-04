@@ -1,0 +1,50 @@
+name: Rust Action Smoke Test
+
+on:
+  pull_request:
+    paths:
+      - "action.yml"
+      - "action/**"
+      - "rust/1panel-cli/**"
+      - ".github/workflows/action-smoke.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "action.yml"
+      - "action/**"
+      - "rust/1panel-cli/**"
+      - ".github/workflows/action-smoke.yml"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Build Rust CLI
+        env:
+          CARGO_TARGET_DIR: target
+        run: cargo build --manifest-path rust/1panel-cli/Cargo.toml --release --locked
+
+      - name: Locate binary
+        id: bin
+        shell: bash
+        run: |
+          set -euo pipefail
+          BIN_PATH="target/release/1panel-cli"
+          if [ ! -f "$BIN_PATH" ]; then
+            echo "Cannot find built 1panel-cli binary"
+            find . -type f -name 1panel-cli | head -n 50
+            exit 1
+          fi
+          echo "path=$BIN_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Run local action help
+        uses: ./
+        with:
+          command: help
+          help-command: deploy-all-compose
+          binary-path: ${{ steps.bin.outputs.path }}

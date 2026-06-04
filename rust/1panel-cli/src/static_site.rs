@@ -1,6 +1,6 @@
 use crate::onepanel::OnePanelConfig;
-use anyhow::{anyhow, Result};
-use reqwest::{multipart, Client};
+use anyhow::{Result, anyhow};
+use reqwest::{Client, multipart};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -114,12 +114,18 @@ fn normalize_website(v: &Value) -> Website {
     Website {
         id: v.get("id").and_then(|x| x.as_u64()),
         domain: primary,
-        alias: v.get("alias").and_then(|x| x.as_str()).map(ToString::to_string),
+        alias: v
+            .get("alias")
+            .and_then(|x| x.as_str())
+            .map(ToString::to_string),
         group_id: v
             .get("webSiteGroupId")
             .and_then(|x| x.as_u64())
             .or_else(|| v.get("webSiteGroupID").and_then(|x| x.as_u64())),
-        site_path: v.get("sitePath").and_then(|x| x.as_str()).map(ToString::to_string),
+        site_path: v
+            .get("sitePath")
+            .and_then(|x| x.as_str())
+            .map(ToString::to_string),
         status: v.get("status").map(|s| s.to_string()),
         domains,
     }
@@ -239,13 +245,20 @@ async fn resolve_group_id(cfg: &OnePanelConfig, preferred: Option<u64>) -> Resul
 
     if let Some(id) = groups
         .iter()
-        .find(|g| g.get("isDefault").and_then(|x| x.as_bool()).unwrap_or(false))
+        .find(|g| {
+            g.get("isDefault")
+                .and_then(|x| x.as_bool())
+                .unwrap_or(false)
+        })
         .and_then(|g| g.get("id").and_then(|x| x.as_u64()))
     {
         return Ok(id);
     }
 
-    if let Some(id) = groups.first().and_then(|g| g.get("id").and_then(|x| x.as_u64())) {
+    if let Some(id) = groups
+        .first()
+        .and_then(|g| g.get("id").and_then(|x| x.as_u64()))
+    {
         return Ok(id);
     }
 
@@ -299,7 +312,11 @@ pub async fn create_website(
         .ok_or_else(|| anyhow!("website creation succeeded but website detail was not found"))
 }
 
-async fn upload_single_file(cfg: &OnePanelConfig, file_path: &Path, target_dir: &str) -> Result<()> {
+async fn upload_single_file(
+    cfg: &OnePanelConfig,
+    file_path: &Path,
+    target_dir: &str,
+) -> Result<()> {
     let api = v2_base(cfg);
     let (token, ts) = auth_headers(&cfg.api_key);
     let c = client(cfg);
@@ -350,7 +367,10 @@ pub async fn deploy_static(
         .map_err(|e| anyhow!("source path invalid: {}", e))?;
 
     if !source_abs.is_dir() {
-        return Err(anyhow!("Build directory {} does not exist", source_abs.display()));
+        return Err(anyhow!(
+            "Build directory {} does not exist",
+            source_abs.display()
+        ));
     }
 
     if domain.is_none() {

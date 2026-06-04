@@ -10,6 +10,9 @@ This project was originally adapted from [ruibaby/1Panel-rocket-cli](https://git
 
 - Node CLI (`src/index.mjs`): static website deploy workflow
 - Rust CLI (`rust/1panel-cli`): image/compose/static-site workflow for CI and automation
+- GitHub Action (`action.yml`): Rust-only composite wrapper around the Rust CLI
+
+See [GitHub Action demos](GITHUB_ACTION_DEMOS.md) for static deploy, compose update, image upload, and full Docker image deployment examples.
 
 ## Rust CLI Highlights
 
@@ -25,6 +28,19 @@ Key commands:
 - `deploy-all-compose`: export image -> upload -> load -> compose update -> compose up
 - `set`: persist defaults (`base-url`, `api-key`, `host`, `port`, `insecure`)
 - `config`: view local config or `--unset` a key
+
+## GitHub Action Quick Start
+
+```yaml
+- name: Deploy static site to 1Panel
+  uses: kalicyh/1Panel-rocket-cli@v1
+  with:
+    command: deploy
+    base-url: ${{ secrets.ONEPANEL_BASE_URL }}
+    api-key: ${{ secrets.ONEPANEL_API_KEY }}
+    path: ./dist
+    domain: example.com
+```
 
 ## Rust CLI Quick Start
 
